@@ -1,5 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from .models import Client, Product, Order
+from django.shortcuts import render
+from django.utils import timezone
+from datetime import timedelta
 
 
 def create_client(name, email, phone_number, address):
@@ -70,3 +73,28 @@ def update_order(order_id, **kwargs):
 def delete_order(order_id):
     order = get_object_or_404(Order, id=order_id)
     order.delete()
+
+
+def ordered_products_list(request):
+    current_date = timezone.now()
+
+    end_date = current_date
+    if request.GET.get('interval') == 'week':
+        start_date = current_date - timedelta(days=7)
+    elif request.GET.get('interval') == 'month':
+        start_date = current_date - timedelta(days=30)
+    elif request.GET.get('interval') == 'year':
+        start_date = current_date - timedelta(days=365)
+    else:
+        start_date = current_date - timedelta(days=7)
+
+    orders = Order.objects.filter(client=request.user, order_date__range=(start_date, end_date))
+
+    ordered_products = []
+
+    for order in orders:
+        for product in order.products.all():
+            if product not in ordered_products:
+                ordered_products.append(product)
+
+    return render(request, 'ordered_products_list.html', {'ordered_products': ordered_products})
